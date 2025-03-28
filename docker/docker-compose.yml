@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  pxe-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: pxe-boot-server
+    network_mode: "host"  # Required for DHCP/PXE to work properly
+    volumes:
+      - ../config/dhcp:/etc/dnsmasq.d
+      - ../config/tftp:/tftpboot
+      - ../config/http:/var/www/html
+      - ../scripts:/app/scripts
+    environment:
+      - INTERFACE=eth0  # Change this to your network interface
+      - SUBNET=192.168.1.0
+      - NETMASK=255.255.255.0
+      - RANGE_START=192.168.1.100
+      - RANGE_END=192.168.1.200
+      - GATEWAY=192.168.1.1
+      - DNS=8.8.8.8,8.8.4.4
+    restart: unless-stopped
+    privileged: true  # Required for network services
+    cap_add:
+      - NET_ADMIN

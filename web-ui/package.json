@@ -1,0 +1,12 @@
+{
+  "name": "pxe-boot-ui",
+  "version": "1.0.0",
+  "description": "Web UI for PXE Boot Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

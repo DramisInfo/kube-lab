@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PXE Boot Server Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+        .status-card {
+            margin-bottom: 20px;
+        }
+        .status-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-active {
+            background-color: #28a745;
+        }
+        .status-inactive {
+            background-color: #dc3545;
+        }
+        .card-header {
+            font-weight: bold;
+        }
+        .setup-section {
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">PXE Boot Server Dashboard</h1>
+        
+        <!-- Status Section -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card status-card">
+                    <div class="card-header bg-primary text-white">
+                        System Status
+                        <button id="refresh-status" class="btn btn-sm btn-light float-end">Refresh</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <p><span id="dhcp-status" class="status-indicator"></span> DHCP Server</p>
+                                <p><span id="tftp-status" class="status-indicator"></span> TFTP Server</p>
+                            </div>
+                            <div class="col-md-4">
+                                <p><span id="nginx-status" class="status-indicator"></span> Web Server</p>
+                                <p><span id="pxe-files-status" class="status-indicator"></span> PXE Boot Files</p>
+                            </div>
+                            <div class="col-md-4">
+                                <p><span id="ubuntu-files-status" class="status-indicator"></span> Ubuntu Files</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Network Configuration -->
+        <div class="row setup-section">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        Network Configuration
+                    </div>
+                    <div class="card-body">
+                        <div id="network-interfaces">
+                            <p>Loading network interfaces...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ubuntu Installation Configuration -->
+        <div class="row setup-section">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        Ubuntu Installation Configuration
+                    </div>
+                    <div class="card-body">
+                        <form id="preseed-form">
+                            <div class="mb-3">
+                                <label for="hostname" class="form-label">Hostname</label>
+                                <input type="text" class="form-control" id="hostname" value="ubuntu-mini-pc">
+                            </div>
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" value="ubuntu">
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" value="ubuntu">
+                            </div>
+                            <div class="mb-3">
+                                <label for="packages" class="form-label">Additional Packages (space-separated)</label>
+                                <input type="text" class="form-control" id="packages" value="openssh-server build-essential net-tools">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Update Configuration</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- DHCP Leases -->
+        <div class="row setup-section">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        DHCP Leases
+                        <button id="refresh-leases" class="btn btn-sm btn-dark float-end">Refresh</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>IP Address</th>
+                                        <th>MAC Address</th>
+                                        <th>Hostname</th>
+                                        <th>Expires</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dhcp-leases">
+                                    <tr>
+                                        <td colspan="4" class="text-center">Loading DHCP leases...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Setup Guide -->
+        <div class="row setup-section">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        Setup Guide
+                    </div>
+                    <div class="card-body">
+                        <h5>How to use this PXE Boot Server:</h5>
+                        <ol>
+                            <li>Connect your mini PC to the same network as this server</li>
+                            <li>Configure your mini PC's BIOS to boot from network (PXE)</li>
+                            <li>Restart your mini PC and it should receive a DHCP address and boot menu</li>
+                            <li>Select "Install Ubuntu 22.04 LTS" from the boot menu</li>
+                            <li>The installation will proceed automatically using the settings configured above</li>
+                        </ol>
+                        <h5>Troubleshooting:</h5>
+                        <ul>
+                            <li>Ensure all services are running (green status indicators above)</li>
+                            <li>Check that your mini PC supports PXE booting</li>
+                            <li>Make sure the network connection is stable</li>
+                            <li>If the installation fails, check the logs in the container</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Function to fetch and display system status
+        function fetchStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('dhcp-status').className = 'status-indicator ' + (data.dhcp ? 'status-active' : 'status-inactive');
+                    document.getElementById('tftp-status').className = 'status-indicator ' + (data.tftp ? 'status-active' : 'status-inactive');
+                    document.getElementById('nginx-status').className = 'status-indicator ' + (data.nginx ? 'status-active' : 'status-inactive');
+                    document.getElementById('pxe-files-status').className = 'status-indicator ' + (data.pxe_files ? 'status-active' : 'status-inactive');
+                    document.getElementById('ubuntu-files-status').className = 'status-indicator ' + (data.ubuntu_files ? 'status-active' : 'status-inactive');
+                })
+                .catch(error => console.error('Error fetching status:', error));
+        }
+
+        // Function to fetch and display DHCP leases
+        function fetchDhcpLeases() {
+            fetch('/api/dhcp-leases')
+                .then(response => response.json())
+                .then(data => {
+                    const leasesTable = document.getElementById('dhcp-leases');
+                    leasesTable.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        leasesTable.innerHTML = '<tr><td colspan="4" class="text-center">No DHCP leases found</td></tr>';
+                        return;
+                    }
+                    
+                    data.forEach(lease => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${lease.ip}</td>
+                            <td>${lease.mac}</td>
+                            <td>${lease.hostname}</td>
+                            <td>${new Date(lease.expires * 1000).toLocaleString()}</td>
+                        `;
+                        leasesTable.appendChild(row);
+                    });
+                })
+                .catch(error => console.error('Error fetching DHCP leases:', error));
+        }
+
+        // Function to fetch and display network configuration
+        function fetchNetworkConfig() {
+            fetch('/api/network-config')
+                .then(response => response.json())
+                .then(data => {
+                    const networkDiv = document.getElementById('network-interfaces');
+                    networkDiv.innerHTML = '<h5>Available Network Interfaces:</h5>';
+                    
+                    const list = document.createElement('ul');
+                    data.forEach(iface => {
+                        const item = document.createElement('li');
+                        item.textContent = `${iface.interface}: ${iface.ipCidr}`;
+                        list.appendChild(item);
+                    });
+                    
+                    networkDiv.appendChild(list);
+                })
+                .catch(error => console.error('Error fetching network config:', error));
+        }
+
+        // Event listener for preseed form submission
+        document.getElementById('preseed-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const hostname = document.getElementById('hostname').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const packages = document.getElementById('packages').value;
+            
+            fetch('/api/update-preseed', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ hostname, username, password, packages })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Configuration updated successfully!');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => console.error('Error updating preseed:', error));
+        });
+
+        // Event listeners for refresh buttons
+        document.getElementById('refresh-status').addEventListener('click', fetchStatus);
+        document.getElementById('refresh-leases').addEventListener('click', fetchDhcpLeases);
+        
+        // Initial data fetch
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchStatus();
+            fetchDhcpLeases();
+            fetchNetworkConfig();
+        });
+    </script>
+</body>
+</html>
