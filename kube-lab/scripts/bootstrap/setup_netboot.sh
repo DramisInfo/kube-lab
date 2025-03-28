@@ -1,5 +1,6 @@
 #!/bin/bash
 # Script to set up network boot services on the control laptop
+# Modified to work with an existing TP-Link ER605 V2 DHCP server
 
 set -e
 
@@ -17,16 +18,51 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}====================================${NC}"
 echo -e "${GREEN} Setting up network boot environment ${NC}"
+echo -e "${GREEN} Compatible with TP-Link ER605 V2 ${NC}"
 echo -e "${GREEN}====================================${NC}"
 
 # Get the project root directory
 SCRIPT_DIR=$(dirname $(realpath $0))
 PROJECT_ROOT=$(dirname $(dirname $SCRIPT_DIR))
 
+# Display DHCP configuration options
+echo -e "${YELLOW}DHCP Server Configuration Options:${NC}"
+echo "1. Configure TP-Link ER605 V2 router for PXE booting (recommended)"
+echo "2. Use dnsmasq in proxy DHCP mode (advanced)"
+echo ""
+read -p "Select option [1-2]: " dhcp_option
+
+if [ "$dhcp_option" = "1" ]; then
+  echo -e "${YELLOW}You've chosen to configure your TP-Link router for PXE booting.${NC}"
+  echo -e "${YELLOW}Please follow these steps on your router:${NC}"
+  echo "1. Log into your TP-Link ER605 V2 router admin interface"
+  echo "2. Go to Network → DHCP → DHCP Settings"
+  echo "3. Enable DHCP Service if not already enabled"
+  echo "4. Under DHCP Options Configuration, add the following options:"
+  echo "   - Option 66 (TFTP Server): [Enter your laptop's IP address]"
+  echo "   - Option 67 (Bootfile Name): pxelinux.0"
+  echo "5. Save the configuration and apply changes"
+  echo ""
+  read -p "Have you configured your router for PXE booting? (y/n): " router_configured
+  
+  if [ "$router_configured" != "y" ]; then
+    echo -e "${RED}Please configure your router before continuing.${NC}"
+    exit 1
+  fi
+  
+  # Not using dnsmasq for DHCP, only for TFTP
+  USE_DNSMASQ_DHCP=false
+else
+  echo -e "${YELLOW}You've chosen to use dnsmasq in proxy DHCP mode.${NC}"
+  echo "This mode will only provide PXE boot information without interfering with your router's IP assignments."
+  echo ""
+  USE_DNSMASQ_DHCP=true
+fi
+
 # Install required packages
 echo -e "${YELLOW}Installing required packages...${NC}"
 apt-get update
-apt-get install -y dnsmasq syslinux pxelinux nfs-kernel-server apache2 isc-dhcp-server
+apt-get install -y dnsmasq syslinux pxelinux nfs-kernel-server apache2
 
 # Setup TFTP directory
 echo -e "${YELLOW}Setting up TFTP server...${NC}"
@@ -57,44 +93,83 @@ cp $PROJECT_ROOT/network-boot/tftp/ks/master.ks /var/www/html/ks/
 cp $PROJECT_ROOT/network-boot/tftp/ks/worker.ks /var/www/html/ks/
 chmod 644 /var/www/html/ks/*
 
-# Configure dnsmasq for DHCP and TFTP
-echo -e "${YELLOW}Configuring DHCP server (dnsmasq)...${NC}"
-cp $PROJECT_ROOT/network-boot/dhcp/dnsmasq.conf /etc/dnsmasq.conf
-
-# Update the tftp-root directory in dnsmasq.conf to match the system path
-sed -i 's|tftp-root=.*|tftp-root=/var/lib/tftpboot|g' /etc/dnsmasq.conf
+# Configure dnsmasq based on selected option
+echo -e "${YELLOW}Configuring TFTP server...${NC}"
 
 # Ask for network interface to use
 echo -e "${YELLOW}Available network interfaces:${NC}"
 ip -o link show | grep -v "lo:" | awk -F': ' '{print $2}'
 
-read -p "Enter the network interface to use for DHCP/PXE (e.g. eth0): " NETWORK_INTERFACE
+read -p "Enter the network interface to use for the TFTP server (e.g. eth0): " NETWORK_INTERFACE
 
-# Update interface in dnsmasq.conf
-sed -i "s/^interface=.*/interface=${NETWORK_INTERFACE}/g" /etc/dnsmasq.conf
+# Get laptop's IP address on selected interface
+LAPTOP_IP=$(ip -o -4 addr show $NETWORK_INTERFACE | awk '{print $4}' | cut -d/ -f1)
 
-# Ask for DHCP range
-read -p "Enter the DHCP range start IP (e.g. 192.168.1.100): " DHCP_START
-read -p "Enter the DHCP range end IP (e.g. 192.168.1.200): " DHCP_END
-read -p "Enter the subnet mask (e.g. 255.255.255.0): " SUBNET_MASK
-read -p "Enter the router/gateway IP (e.g. 192.168.1.1): " ROUTER_IP
-read -p "Enter the DNS server IP (typically same as router): " DNS_IP
-read -p "Enter the TFTP server IP (this machine's IP on the network): " TFTP_IP
+if [ -z "$LAPTOP_IP" ]; then
+  echo -e "${RED}Could not determine IP address for interface ${NETWORK_INTERFACE}${NC}"
+  read -p "Please enter your laptop's IP address manually: " LAPTOP_IP
+fi
 
-# Update dnsmasq.conf with provided information
-sed -i "s/^dhcp-range=.*/dhcp-range=${DHCP_START},${DHCP_END},${SUBNET_MASK},12h/g" /etc/dnsmasq.conf
-sed -i "s/^dhcp-option=option:router,.*/dhcp-option=option:router,${ROUTER_IP}/g" /etc/dnsmasq.conf
-sed -i "s/^dhcp-option=option:dns-server,.*/dhcp-option=option:dns-server,${DNS_IP}/g" /etc/dnsmasq.conf
-sed -i "s/^dhcp-boot=pxelinux.0,pxeserver,.*/dhcp-boot=pxelinux.0,pxeserver,${TFTP_IP}/g" /etc/dnsmasq.conf
-sed -i "s/^dhcp-option=66,.*/dhcp-option=66,${TFTP_IP}/g" /etc/dnsmasq.conf
+echo -e "${GREEN}Using IP address: ${LAPTOP_IP}${NC}"
 
-# Disable the ISC DHCP server to avoid conflicts
-systemctl stop isc-dhcp-server
-systemctl disable isc-dhcp-server
+# Configure dnsmasq.conf differently based on the selected option
+if [ "$USE_DNSMASQ_DHCP" = true ]; then
+  # Create dnsmasq.conf for proxy DHCP mode
+  cat > /etc/dnsmasq.conf <<EOF
+# dnsmasq configuration for PXE Boot in proxy DHCP mode
+# This mode works alongside your existing DHCP server
+
+# Listen on specific interface
+interface=${NETWORK_INTERFACE}
+
+# Run as proxy DHCP server, not replacing existing DHCP server
+dhcp-range=${LAPTOP_IP},proxy
+
+# PXE boot options
+dhcp-boot=pxelinux.0,pxeserver,${LAPTOP_IP}
+
+# TFTP server
+enable-tftp
+tftp-root=/var/lib/tftpboot
+
+# Log settings
+log-dhcp
+log-queries
+EOF
+
+  echo -e "${YELLOW}Configured dnsmasq in proxy DHCP mode.${NC}"
+  echo "This will provide only PXE boot information while your TP-Link router handles IP assignments."
+else
+  # Create dnsmasq.conf for TFTP only
+  cat > /etc/dnsmasq.conf <<EOF
+# dnsmasq configuration for TFTP only
+# DHCP handled by TP-Link ER605 V2 router
+
+# Don't function as a DHCP server
+no-dhcp-interface=${NETWORK_INTERFACE}
+
+# Listen on specific interface
+interface=${NETWORK_INTERFACE}
+
+# TFTP server
+enable-tftp
+tftp-root=/var/lib/tftpboot
+
+# Log settings
+log-queries
+EOF
+
+  echo -e "${YELLOW}Configured dnsmasq for TFTP service only.${NC}"
+  echo "Make sure your TP-Link router is configured with options 66 and 67 as instructed."
+fi
 
 # Prepare the boot images
 echo -e "${YELLOW}Preparing boot images...${NC}"
 bash $PROJECT_ROOT/scripts/bootstrap/prepare_boot_images.sh
+
+# Update the PXE configuration with correct server IP
+echo -e "${YELLOW}Updating PXE configuration with server IP...${NC}"
+sed -i "s/192.168.1.10/${LAPTOP_IP}/g" /var/lib/tftpboot/pxelinux.cfg/default
 
 # Restart services
 echo -e "${YELLOW}Restarting services...${NC}"
@@ -103,16 +178,19 @@ systemctl restart nfs-kernel-server
 systemctl enable apache2
 systemctl restart apache2
 systemctl stop dnsmasq
-systemctl disable dnsmasq.service # Don't start automatically on boot
+systemctl enable dnsmasq
+systemctl start dnsmasq
 
 echo -e "${GREEN}Network boot environment setup complete!${NC}"
-echo -e "${YELLOW}Next steps:${NC}"
-echo "1. Make sure no other DHCP servers are running on your network"
-echo "2. Start the DHCP/TFTP service when ready with: sudo systemctl start dnsmasq"
-echo "3. Configure your mini PCs to boot from network (PXE)"
-echo "4. Power on your mini PCs and they should boot from the network"
 echo ""
-echo "To start the DHCP/TFTP service now, run: sudo systemctl start dnsmasq"
-echo "To see the DHCP/TFTP logs, run: sudo journalctl -u dnsmasq -f"
+echo -e "${YELLOW}Important Notes for TP-Link ER605 V2 Router Users:${NC}"
+echo "1. Your TFTP server is running at: ${LAPTOP_IP}"
+echo "2. If using router configuration (option 1):"
+echo "   - Ensure option 66 is set to: ${LAPTOP_IP}"
+echo "   - Ensure option 67 is set to: pxelinux.0"
+echo "3. Kickstart files are available at: http://${LAPTOP_IP}/ks/"
+echo ""
+echo "To monitor DHCP/TFTP logs, run: sudo journalctl -u dnsmasq -f"
+echo "To test PXE boot, configure your mini PCs to boot from network and power them on."
 
 exit 0

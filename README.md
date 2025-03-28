@@ -139,7 +139,21 @@ worker1 ansible_host=192.168.1.102 ansible_user=ubuntu
 worker2 ansible_host=192.168.1.103 ansible_user=ubuntu
 ```
 
-### 3. Run the Deployment Script
+### 3. Router Configuration for PXE Boot
+
+Since you're using a TP-Link ER605 V2 router as your DHCP server, you'll need to configure it to support PXE booting:
+
+1. Log in to your TP-Link ER605 V2 router's admin interface
+2. Navigate to Network → DHCP → DHCP Settings
+3. Ensure DHCP Service is enabled
+4. Under DHCP Options Configuration, add the following options:
+   - Option 66 (TFTP Server): [Your laptop's IP address]
+   - Option 67 (Bootfile Name): pxelinux.0
+5. Save the configuration
+
+Alternatively, the deployment script offers a "proxy DHCP" mode that doesn't require router configuration but provides only PXE boot information alongside your router's DHCP service.
+
+### 4. Run the Deployment Script
 
 The main deployment script will guide you through the entire process:
 
@@ -168,7 +182,7 @@ The deployment process has three stages:
 - Sets up networking, storage, and basic cluster configuration
 - Provides a kubeconfig file for cluster access
 
-### 4. Access Your Kubernetes Cluster
+### 5. Access Your Kubernetes Cluster
 
 Once the deployment is complete, you can access your Kubernetes cluster from your control machine:
 
