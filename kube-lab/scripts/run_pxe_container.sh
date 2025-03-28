@@ -41,17 +41,38 @@ else
     echo -e "${GREEN}Using existing Docker image kube-lab-pxe:latest${NC}"
 fi
 
-# Get network interface
-echo -e "${YELLOW}Available network interfaces:${NC}"
-ip -o link show | grep -v "lo:" | awk -F': ' '{print $2}'
-echo ""
+# Get network interface with validation
+while true; do
+    echo -e "${YELLOW}Available network interfaces:${NC}"
+    ip -o link show | grep -v "lo:" | awk -F': ' '{print $2}'
+    echo ""
+    read -p "Enter the network interface to use (e.g., eth0): " INTERFACE
+    
+    if [ -z "$INTERFACE" ]; then
+        echo -e "${RED}Error: Interface name cannot be empty${NC}"
+        continue
+    fi
+    
+    if ! ip link show "$INTERFACE" &> /dev/null; then
+        echo -e "${RED}Error: Interface $INTERFACE does not exist${NC}"
+        continue
+    fi
+    
+    break
+done
 
-read -p "Enter the network interface to use (e.g., eth0): " INTERFACE
-CONTAINER_IP=$(ip -o -4 addr show $INTERFACE | awk '{print $4}' | cut -d/ -f1)
+# Get specific IP for the selected interface
+CONTAINER_IP=$(ip -o -4 addr show "$INTERFACE" | awk '{split($4,a,"/"); print a[1]}' | head -n1)
 
 if [ -z "$CONTAINER_IP" ]; then
     echo -e "${RED}Could not determine IP address for interface ${INTERFACE}${NC}"
     read -p "Please enter your machine's IP address manually: " CONTAINER_IP
+fi
+
+# Validate IP address
+if [[ ! $CONTAINER_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo -e "${RED}Invalid IP address format: ${CONTAINER_IP}${NC}"
+    exit 1
 fi
 
 echo ""
@@ -110,10 +131,19 @@ fi
 
 DOCKER_CMD+=" kube-lab-pxe:latest"
 
-# Remove existing container if it exists
+# Stop and remove any existing containers
+echo -e "${YELLOW}Checking for existing PXE containers...${NC}"
 if docker ps -a --format '{{.Names}}' | grep -q '^kube-lab-pxe$'; then
+    echo -e "${YELLOW}Stopping existing PXE boot container...${NC}"
+    docker stop kube-lab-pxe &> /dev/null || true
     echo -e "${YELLOW}Removing existing PXE boot container...${NC}"
-    docker rm -f kube-lab-pxe
+    docker rm kube-lab-pxe &> /dev/null || true
+fi
+
+# Also check and remove old container names if they exist
+if docker ps -a --format '{{.Names}}' | grep -q '^kube-pxe-server$'; then
+    docker stop kube-pxe-server &> /dev/null || true
+    docker rm kube-pxe-server &> /dev/null || true
 fi
 
 # Run the container

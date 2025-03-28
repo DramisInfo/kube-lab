@@ -245,11 +245,49 @@ If you encounter issues during deployment:
    - DHCP/TFTP: `sudo journalctl -u dnsmasq -f`
    - Ansible: Check output during deployment
 
-## Future Plans
+## Known Issues and TODO
+### PXE Boot Container Improvements
+1. Apache2 Service Stability
+   - Fix Apache2 service startup issues in the container
+   - Add proper error logging for Apache2 service
+   - Implement proper Apache2 configuration for serving kickstart files
 
-- Implement automated backup and restore procedures
-- Add monitoring and alerting solutions
-- Create easy node addition/replacement procedures
+2. DNSmasq Configuration
+   - Improve interface binding logic for DNSmasq
+   - Add validation for network interface selection
+   - Implement fallback mechanism for interface detection
+
+3. Container Enhancements
+   - Add proper user permissions for services
+   - Implement health checks for all services
+   - Add proper signal handling for container shutdown
+   - Add volume persistence for TFTP and HTTP content
+
+4. Error Handling
+   - Implement better error reporting for service failures
+   - Add diagnostic tools in the container
+   - Create troubleshooting documentation
+
+5. Testing
+   - Add automated tests for the PXE boot process
+   - Create network simulation tests
+   - Add integration tests for all DHCP modes
+
+### Future Improvements
+1. Service Monitoring
+   - Add Prometheus metrics for PXE boot services
+   - Implement service status dashboard
+   - Create alert system for service failures
+
+2. Network Boot Security
+   - Implement HTTPS for kickstart file delivery
+   - Add authentication for PXE boot services
+   - Implement secure boot chain
+
+3. Documentation
+   - Add detailed troubleshooting guide for each service
+   - Create network requirements documentation
+   - Add performance tuning guide
 
 ## Contributing
 

@@ -34,11 +34,25 @@ if [ ! -f /var/lib/tftpboot/vmlinuz ]; then
   /usr/local/bin/prepare_boot_images.sh
 fi
 
-# Configure dnsmasq based on selected DHCP mode
-case ${DHCP_MODE} in
-  "full")
-    # Full DHCP server mode
-    cat > /etc/dnsmasq.conf <<EOF
+# Setup Apache2
+mkdir -p /var/run/apache2 /var/lock/apache2
+chown -R www-data:www-data /var/run/apache2 /var/lock/apache2 /var/www/html
+chmod 755 /var/run/apache2 /var/lock/apache2
+
+# Setup dnsmasq configuration based on DHCP mode
+case "${DHCP_MODE}" in
+    "tftp-only")
+        cat > /etc/dnsmasq.conf <<EOF
+interface=${INTERFACE}
+bind-interfaces
+port=0
+enable-tftp
+tftp-root=/var/lib/tftpboot
+EOF
+        ;;
+    "full")
+        # Full DHCP server mode
+        cat > /etc/dnsmasq.conf <<EOF
 # dnsmasq configuration for PXE Boot with full DHCP
 interface=${INTERFACE}
 bind-interfaces
@@ -60,12 +74,12 @@ tftp-root=/var/lib/tftpboot
 log-dhcp
 log-queries
 EOF
-    echo "Configured as full DHCP server"
-    ;;
+        echo "Configured as full DHCP server"
+        ;;
 
-  "proxy")
-    # Proxy DHCP mode (for existing DHCP server)
-    cat > /etc/dnsmasq.conf <<EOF
+    "proxy")
+        # Proxy DHCP mode (for existing DHCP server)
+        cat > /etc/dnsmasq.conf <<EOF
 # dnsmasq configuration for PXE Boot in proxy DHCP mode
 interface=${INTERFACE}
 bind-interfaces
@@ -82,32 +96,14 @@ tftp-root=/var/lib/tftpboot
 log-dhcp
 log-queries
 EOF
-    echo "Configured in proxy DHCP mode"
-    ;;
+        echo "Configured in proxy DHCP mode"
+        ;;
 
-  "tftp-only")
-    # TFTP only mode (for TP-Link router with options 66,67)
-    cat > /etc/dnsmasq.conf <<EOF
-# dnsmasq configuration for TFTP only
-interface=${INTERFACE}
-bind-interfaces
-no-dhcp-interface=${INTERFACE}
-
-# TFTP server
-enable-tftp
-tftp-root=/var/lib/tftpboot
-
-# Logging
-log-queries
-EOF
-    echo "Configured in TFTP-only mode"
-    ;;
-
-  *)
-    echo "Invalid DHCP_MODE: ${DHCP_MODE}"
-    echo "Valid options are: full, proxy, tftp-only"
-    exit 1
-    ;;
+    *)
+        echo "Invalid DHCP_MODE: ${DHCP_MODE}"
+        echo "Valid options are: full, proxy, tftp-only"
+        exit 1
+        ;;
 esac
 
 # Ensure permissions are correct
