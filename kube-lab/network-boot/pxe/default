@@ -1,0 +1,20 @@
+DEFAULT menu.c32
+PROMPT 0
+TIMEOUT 300
+ONTIMEOUT local
+
+MENU TITLE Kubernetes Homelab PXE Boot Menu
+
+LABEL kubernetes-master
+    MENU LABEL ^1) Install Kubernetes Master Node
+    KERNEL vmlinuz
+    APPEND initrd=initrd.img ip=dhcp boot=nfs nfsroot=192.168.1.10:/nfs/kubernetes-master ks=http://192.168.1.10/ks/master.cfg
+
+LABEL kubernetes-worker
+    MENU LABEL ^2) Install Kubernetes Worker Node
+    KERNEL vmlinuz
+    APPEND initrd=initrd.img ip=dhcp boot=nfs nfsroot=192.168.1.10:/nfs/kubernetes-worker ks=http://192.168.1.10/ks/worker.cfg
+
+LABEL local
+    MENU LABEL ^3) Boot from local disk
+    LOCALBOOT 0

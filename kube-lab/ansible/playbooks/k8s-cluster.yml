@@ -1,0 +1,39 @@
+---
+# Main playbook for deploying the Kubernetes cluster
+
+- name: Install prerequisites on all nodes
+  hosts: k8s_cluster
+  become: true
+  roles:
+    - common
+    - containerd
+
+- name: Configure Kubernetes components on all nodes
+  hosts: k8s_cluster
+  become: true
+  roles:
+    - kubernetes/common
+
+- name: Configure Kubernetes control plane
+  hosts: k8s_masters
+  become: true
+  roles:
+    - kubernetes/master
+
+- name: Configure Kubernetes workers
+  hosts: k8s_workers
+  become: true
+  roles:
+    - kubernetes/worker
+
+- name: Deploy CNI network plugin
+  hosts: k8s_masters[0]
+  become: true
+  roles:
+    - kubernetes/cni
+
+- name: Configure storage
+  hosts: k8s_masters[0]
+  become: true
+  roles:
+    - storage
