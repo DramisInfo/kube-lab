@@ -27,11 +27,18 @@ The following diagram illustrates the architecture of the Kubernetes homelab set
 
 ```mermaid
 flowchart TD
+    subgraph "Home Network"
+        Z[TP-Link ER605 V2 Router] -- DHCP --> F
+        Z -- DHCP --> L
+        Z -- DHCP --> P
+        Z -- DHCP --> Laptop
+    end
+    
     subgraph "Control Plane (Laptop)"
-        A[Deploy Script] --> B[PXE/DHCP Server]
+        A[Deploy Script] --> B[TFTP Server]
         A --> C[Ansible Controller]
-        B --> D[TFTP Server]
-        B --> E[HTTP Server]
+        B --> D[Boot Files]
+        A --> E[HTTP Server]
     end
     
     subgraph "Kubernetes Cluster"
@@ -47,9 +54,10 @@ flowchart TD
         P --> S[Container Runtime]
     end
     
-    B -- PXE Boot --> F
-    B -- PXE Boot --> L
-    B -- PXE Boot --> P
+    Z -- PXE Option 66,67 --> B
+    F -- PXE Boot --> B
+    L -- PXE Boot --> B
+    P -- PXE Boot --> B
     C -- Ansible Playbooks --> F
     C -- Ansible Playbooks --> L
     C -- Ansible Playbooks --> P
@@ -69,22 +77,27 @@ The following diagram shows the automated deployment flow:
 sequenceDiagram
     participant User
     participant Laptop as Control Laptop
-    participant DHCP as DHCP/TFTP Server
+    participant Router as TP-Link Router
+    participant TFTP as TFTP Server (Laptop)
     participant Master as Master Node
     participant Workers as Worker Nodes
     
     User->>Laptop: Run deploy_k8s.sh
-    Laptop->>Laptop: Setup network boot environment
-    Laptop->>DHCP: Start DHCP/TFTP services
+    Laptop->>Laptop: Setup TFTP server
+    Laptop->>Router: Configure PXE options 66,67
     
     User->>Master: Power on
-    Master->>DHCP: PXE boot request
-    DHCP->>Master: Send boot files & kickstart
+    Master->>Router: DHCP request
+    Router->>Master: IP assignment + PXE boot info
+    Master->>TFTP: Request boot files
+    TFTP->>Master: Send boot files & kickstart
     Master->>Master: Install OS via kickstart
     
     User->>Workers: Power on
-    Workers->>DHCP: PXE boot request
-    DHCP->>Workers: Send boot files & kickstart
+    Workers->>Router: DHCP request
+    Router->>Workers: IP assignment + PXE boot info
+    Workers->>TFTP: Request boot files
+    TFTP->>Workers: Send boot files & kickstart
     Workers->>Workers: Install OS via kickstart
     
     Laptop->>Laptop: Verify nodes are online
