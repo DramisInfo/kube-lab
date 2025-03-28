@@ -152,7 +152,28 @@ worker1 ansible_host=192.168.1.102 ansible_user=ubuntu
 worker2 ansible_host=192.168.1.103 ansible_user=ubuntu
 ```
 
-### 3. Router Configuration for PXE Boot
+### 3. Network Boot Options
+
+You have two options for setting up the network boot environment:
+
+#### Option A: Containerized PXE Boot Server (Recommended)
+
+This option uses Docker to run the PXE boot server, making it portable across different laptops:
+
+1. Ensure Docker is installed on your machine
+2. Run the containerized PXE boot server:
+   ```bash
+   sudo bash kube-lab/scripts/run_pxe_container.sh
+   ```
+3. Follow the interactive prompts to configure the PXE server based on your network
+4. The script will build and run a Docker container with all necessary services
+
+This containerized approach offers several advantages:
+- Portable: Run from any machine with Docker
+- Isolated: Doesn't affect your host system
+- Consistent: Same environment regardless of the host
+
+#### Option B: Native PXE Boot Setup
 
 Since you're using a TP-Link ER605 V2 router as your DHCP server, you'll need to configure it to support PXE booting:
 
