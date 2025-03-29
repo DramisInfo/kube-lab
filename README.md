@@ -57,7 +57,58 @@ This project aims to create a containerized grooming PC solution that can automa
 
 ## Getting Started
 
-(Instructions will be added as development progresses)
+### Running the PXE Boot Server
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/kube-lab.git
+cd kube-lab
+```
+
+2. Build and start the container:
+```bash
+docker-compose -f docker/docker-compose.yml up -d
+```
+
+3. The PXE boot server should now be running with:
+   - Web UI accessible at: http://localhost:80
+   - DHCP server listening on the specified interface
+   - TFTP server providing boot files
+
+### Testing with VirtualBox
+
+You can test the PXE boot server using VirtualBox without needing physical hardware:
+
+1. **Setup VirtualBox Host-Only Network**:
+   - Open VirtualBox → File → Host Network Manager
+   - Create new network with these settings:
+     - IPv4 Address: 172.28.205.1
+     - IPv4 Network Mask: 255.255.240.0
+     - Disable DHCP Server
+
+2. **Create Test VM**:
+   - Create a new VM in VirtualBox
+   - Configure Network:
+     - Adapter 1: Host-only Network (select the one created above)
+     - Adapter 2: NAT (optional, for internet access)
+   - Configure Boot Order:
+     - System → Boot Order: Move "Network" to the top
+
+3. **Run the VirtualBox testing script**:
+```bash
+./scripts/test-virtualbox.sh
+```
+
+4. **Start your VM**:
+   - Start your VM - it should attempt to PXE boot
+   - Monitor the logs: `docker logs pxe-boot-server -f`
+
+5. **Expected results**:
+   - VM gets IP address from your DHCP server
+   - Boot menu appears via PXE
+   - Ubuntu installation begins
+
+This testing setup allows you to validate your PXE boot configuration without affecting your main network or requiring physical hardware.
 
 ## Remaining Tasks
 
@@ -80,6 +131,7 @@ The following tasks still need to be completed to fully implement the PXE boot s
    - ✅ Created placeholder netboot files to ensure system can start
    - ✅ Set up the TFTP boot environment with proper menu entries
    - ✅ Configured preseed files for automated Ubuntu installation
+   - ✅ Created test script for validating PXE boot using VirtualBox
    - Need to test the complete PXE boot process with a client machine
 
 4. **Network Configuration Fine-tuning**
