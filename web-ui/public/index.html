@@ -8,6 +8,7 @@
     <style>
         body {
             padding-top: 20px;
+            padding-bottom: 40px;
             background-color: #f8f9fa;
         }
         .status-card {
@@ -32,6 +33,49 @@
         .setup-section {
             margin-top: 30px;
             margin-bottom: 30px;
+        }
+        .log-container {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #1e1e1e;
+            color: #f1f1f1;
+            font-family: monospace;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .log-container::-webkit-scrollbar {
+            width: 10px;
+        }
+        .log-container::-webkit-scrollbar-track {
+            background: #333;
+        }
+        .log-container::-webkit-scrollbar-thumb {
+            background: #888;
+        }
+        .log-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .nav-tabs .nav-link {
+            color: #495057;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+        }
+        .monitor-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .refresh-icon {
+            cursor: pointer;
+            color: #0d6efd;
+        }
+        .refresh-icon:hover {
+            color: #0a58ca;
+        }
+        .auto-refresh-toggle {
+            margin-left: 10px;
         }
     </style>
 </head>
@@ -59,6 +103,118 @@
                             </div>
                             <div class="col-md-4">
                                 <p><span id="ubuntu-files-status" class="status-indicator"></span> Ubuntu Files</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Live Monitoring Section -->
+        <div class="row setup-section">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        Live Monitoring
+                        <div class="float-end">
+                            <button id="refresh-monitoring" class="btn btn-sm btn-light">Refresh</button>
+                            <div class="form-check form-switch d-inline-block auto-refresh-toggle">
+                                <input class="form-check-input" type="checkbox" id="auto-refresh-toggle">
+                                <label class="form-check-label text-white" for="auto-refresh-toggle">Auto-refresh</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">CPU Usage</div>
+                                    <div class="card-body text-center">
+                                        <div id="cpu-usage" class="monitor-value">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">Memory Usage</div>
+                                    <div class="card-body text-center">
+                                        <div id="memory-usage" class="monitor-value">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">Disk Usage</div>
+                                    <div class="card-body text-center">
+                                        <div id="disk-usage" class="monitor-value">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">TFTP Connections</div>
+                                    <div class="card-body text-center">
+                                        <div id="tftp-connections" class="monitor-value">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">Active DHCP Leases</div>
+                                    <div class="card-body text-center">
+                                        <div id="active-dhcp-leases" class="monitor-value">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Logs Section -->
+        <div class="row setup-section">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        Service Logs
+                        <div class="float-end">
+                            <button id="refresh-logs" class="btn btn-sm btn-light">Refresh</button>
+                            <div class="form-check form-switch d-inline-block auto-refresh-toggle">
+                                <input class="form-check-input" type="checkbox" id="auto-refresh-logs-toggle">
+                                <label class="form-check-label text-white" for="auto-refresh-logs-toggle">Auto-refresh</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="logTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="dnsmasq-tab" data-bs-toggle="tab" data-bs-target="#dnsmasq-logs" type="button" role="tab" aria-controls="dnsmasq-logs" aria-selected="true">DHCP/TFTP</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="nginx-tab" data-bs-toggle="tab" data-bs-target="#nginx-logs" type="button" role="tab" aria-controls="nginx-logs" aria-selected="false">Web Server</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="setup-tab" data-bs-toggle="tab" data-bs-target="#setup-logs" type="button" role="tab" aria-controls="setup-logs" aria-selected="false">Setup Script</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="webui-tab" data-bs-toggle="tab" data-bs-target="#webui-logs" type="button" role="tab" aria-controls="webui-logs" aria-selected="false">Web UI</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3" id="logTabsContent">
+                            <div class="tab-pane fade show active" id="dnsmasq-logs" role="tabpanel" aria-labelledby="dnsmasq-tab">
+                                <div class="log-container" id="dnsmasq-log-content">Loading logs...</div>
+                            </div>
+                            <div class="tab-pane fade" id="nginx-logs" role="tabpanel" aria-labelledby="nginx-tab">
+                                <div class="log-container" id="nginx-log-content">Loading logs...</div>
+                            </div>
+                            <div class="tab-pane fade" id="setup-logs" role="tabpanel" aria-labelledby="setup-tab">
+                                <div class="log-container" id="setup-log-content">Loading logs...</div>
+                            </div>
+                            <div class="tab-pane fade" id="webui-logs" role="tabpanel" aria-labelledby="webui-tab">
+                                <div class="log-container" id="webui-log-content">Loading logs...</div>
                             </div>
                         </div>
                     </div>
@@ -237,6 +393,97 @@
                 .catch(error => console.error('Error fetching network config:', error));
         }
 
+        // New function to fetch and display logs
+        function fetchLogs(service) {
+            fetch(`/api/logs/${service}`)
+                .then(response => response.text())
+                .then(data => {
+                    const logContent = document.getElementById(`${service}-log-content`);
+                    logContent.textContent = data || `No logs available for ${service}`;
+                    logContent.scrollTop = logContent.scrollHeight; // Auto-scroll to bottom
+                })
+                .catch(error => {
+                    console.error(`Error fetching ${service} logs:`, error);
+                    document.getElementById(`${service}-log-content`).textContent = `Error loading logs: ${error.message}`;
+                });
+        }
+
+        // New function to fetch and display system stats
+        function fetchSystemStats() {
+            fetch('/api/system-stats')
+                .then(response => response.json())
+                .then(data => {
+                    // Extract CPU usage
+                    const cpuLine = data.cpu_mem[0];
+                    const cpuMatch = cpuLine.match(/(\d+\.\d+)%\s+us/);
+                    const cpuUsage = cpuMatch ? cpuMatch[1] + '%' : 'N/A';
+                    document.getElementById('cpu-usage').textContent = cpuUsage;
+                    
+                    // Extract memory usage
+                    const memLine = data.cpu_mem[1];
+                    const memMatch = memLine.match(/(\d+\.\d+)%\s+used/);
+                    const memUsage = memMatch ? memMatch[1] + '%' : 'N/A';
+                    document.getElementById('memory-usage').textContent = memUsage;
+                    
+                    // Extract disk usage
+                    if (Array.isArray(data.disk) && data.disk.length > 1) {
+                        const diskLine = data.disk[1];
+                        const diskMatch = diskLine.match(/(\d+)%/);
+                        const diskUsage = diskMatch ? diskMatch[1] + '%' : 'N/A';
+                        document.getElementById('disk-usage').textContent = diskUsage;
+                    } else {
+                        document.getElementById('disk-usage').textContent = 'N/A';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching system stats:', error);
+                    document.getElementById('cpu-usage').textContent = 'Error';
+                    document.getElementById('memory-usage').textContent = 'Error';
+                    document.getElementById('disk-usage').textContent = 'Error';
+                });
+        }
+
+        // New function to fetch TFTP connection stats
+        function fetchTftpConnections() {
+            fetch('/api/tftp-active')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('tftp-connections').textContent = data.active_connections;
+                })
+                .catch(error => {
+                    console.error('Error fetching TFTP connections:', error);
+                    document.getElementById('tftp-connections').textContent = 'Error';
+                });
+        }
+
+        // Function to update DHCP lease count
+        function updateDhcpLeaseCount() {
+            fetch('/api/dhcp-leases')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('active-dhcp-leases').textContent = data.length;
+                })
+                .catch(error => {
+                    console.error('Error fetching DHCP leases count:', error);
+                    document.getElementById('active-dhcp-leases').textContent = 'Error';
+                });
+        }
+
+        // Function to fetch all logs
+        function fetchAllLogs() {
+            fetchLogs('dnsmasq');
+            fetchLogs('nginx');
+            fetchLogs('setup');
+            fetchLogs('web-ui');
+        }
+
+        // Function to fetch all monitoring data
+        function fetchAllMonitoring() {
+            fetchSystemStats();
+            fetchTftpConnections();
+            updateDhcpLeaseCount();
+        }
+
         // Event listener for preseed form submission
         document.getElementById('preseed-form').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -267,12 +514,36 @@
         // Event listeners for refresh buttons
         document.getElementById('refresh-status').addEventListener('click', fetchStatus);
         document.getElementById('refresh-leases').addEventListener('click', fetchDhcpLeases);
+        document.getElementById('refresh-logs').addEventListener('click', fetchAllLogs);
+        document.getElementById('refresh-monitoring').addEventListener('click', fetchAllMonitoring);
+        
+        // Auto-refresh functionality
+        let monitoringInterval = null;
+        let logsInterval = null;
+        
+        document.getElementById('auto-refresh-toggle').addEventListener('change', function(e) {
+            if (e.target.checked) {
+                monitoringInterval = setInterval(fetchAllMonitoring, 5000); // Refresh every 5 seconds
+            } else {
+                clearInterval(monitoringInterval);
+            }
+        });
+        
+        document.getElementById('auto-refresh-logs-toggle').addEventListener('change', function(e) {
+            if (e.target.checked) {
+                logsInterval = setInterval(fetchAllLogs, 5000); // Refresh every 5 seconds
+            } else {
+                clearInterval(logsInterval);
+            }
+        });
         
         // Initial data fetch
         document.addEventListener('DOMContentLoaded', function() {
             fetchStatus();
             fetchDhcpLeases();
             fetchNetworkConfig();
+            fetchAllLogs();
+            fetchAllMonitoring();
         });
     </script>
 </body>

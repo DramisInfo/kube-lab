@@ -89,9 +89,10 @@ The following tasks still need to be completed to fully implement the PXE boot s
    - ✅ Correctly configured DHCP options for PXE boot
 
 5. **Logging and Monitoring**
-   - Implement proper logging for all services
-   - Add monitoring capabilities to track successful/failed boots
-   - Create an admin dashboard to monitor system status
+   - ✅ Implemented live log viewing in the web UI
+   - ✅ Added system resource monitoring (CPU, memory, disk usage)
+   - ✅ Added DHCP and TFTP connection monitoring
+   - ✅ Implemented auto-refresh functionality for real-time updates
 
 6. **Documentation**
    - Complete user documentation for operation

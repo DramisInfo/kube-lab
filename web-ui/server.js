@@ -147,6 +147,75 @@ app.get('/network-config', (req, res) => {
   });
 });
 
+// New endpoint to get service logs
+app.get('/logs/:service', (req, res) => {
+  const service = req.params.service;
+  const validServices = ['dnsmasq', 'nginx', 'setup', 'web-ui'];
+  
+  if (!validServices.includes(service)) {
+    return res.status(400).json({ error: 'Invalid service name' });
+  }
+  
+  let logFile;
+  switch(service) {
+    case 'dnsmasq':
+      logFile = '/var/log/dnsmasq.log';
+      break;
+    case 'nginx':
+      logFile = '/var/log/nginx/access.log';
+      break;
+    case 'setup':
+      logFile = '/var/log/supervisor/setup_stdout.log';
+      break;
+    case 'web-ui':
+      logFile = '/var/log/supervisor/web_ui_stdout.log';
+      break;
+  }
+  
+  // Get the last 100 lines of the log file
+  exec(`tail -n 100 ${logFile}`, (error, stdout) => {
+    if (error) {
+      return res.status(500).json({ error: `Could not read ${service} logs` });
+    }
+    res.send(stdout);
+  });
+});
+
+// New endpoint to get system resource usage
+app.get('/system-stats', (req, res) => {
+  exec('top -bn1 | grep -E "Cpu|Mem"', (error, cpuMemOutput) => {
+    if (error) {
+      return res.status(500).json({ error: 'Could not retrieve system stats' });
+    }
+    
+    exec('df -h | grep -E "Filesystem|/$"', (error, diskOutput) => {
+      if (error) {
+        return res.status(500).json({ 
+          cpu_mem: cpuMemOutput.trim().split('\n'),
+          disk: 'Could not retrieve disk stats' 
+        });
+      }
+      
+      res.json({
+        cpu_mem: cpuMemOutput.trim().split('\n'),
+        disk: diskOutput.trim().split('\n')
+      });
+    });
+  });
+});
+
+// New endpoint to get active TFTP connections
+app.get('/tftp-active', (req, res) => {
+  exec('netstat -an | grep -E ":69\\s" | wc -l', (error, stdout) => {
+    if (error) {
+      return res.status(500).json({ error: 'Could not retrieve TFTP connection stats' });
+    }
+    
+    const connections = parseInt(stdout.trim());
+    res.json({ active_connections: connections });
+  });
+});
+
 // Start the server
 app.listen(port, () => {
   console.log(`PXE Boot UI API server running on port ${port}`);
