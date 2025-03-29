@@ -72,8 +72,8 @@ The following tasks still need to be completed to fully implement the PXE boot s
 2. **Set Up Node.js API Server**
    - ✅ Node.js server is properly starting in the container and running
    - ✅ The web-ui-api service shows as RUNNING in supervisord
+   - ✅ Node.js API correctly configured to serve API endpoints at /api/ path
    - Need to verify API endpoints are accessible from the browser
-   - Debug any connection issues between the web UI and API
 
 3. **Complete PXE Boot Configuration**
    - Download and configure Ubuntu netboot files
@@ -82,10 +82,11 @@ The following tasks still need to be completed to fully implement the PXE boot s
    - Test the complete PXE boot process with a client machine
 
 4. **Network Configuration Fine-tuning**
-   - ❌ DHCP server (dnsmasq) is failing to start (enters FATAL state)
-   - Need to resolve conflicts with host network mode
-   - Fix any IP address range or subnet mask issues
-   - Verify that DHCP options for PXE boot are correctly set
+   - ✅ DHCP server (dnsmasq) is now successfully running
+   - ✅ Fixed dnsmasq configuration by hard-coding network settings
+   - ✅ Correctly configured DHCP options for PXE boot
+   - ❌ TFTP server (tftpd-hpa) is failing with error code 71 (permissions issue)
+   - ❌ Setup script fails when downloading Ubuntu netboot files (URL issues)
 
 5. **Logging and Monitoring**
    - Implement proper logging for all services
@@ -96,6 +97,25 @@ The following tasks still need to be completed to fully implement the PXE boot s
    - Complete user documentation for operation
    - Add troubleshooting section for common issues
    - Document the architecture and configuration details
+
+## Troubleshooting Progress
+
+During our testing, we've identified and fixed several issues:
+
+1. **DHCP Service (Fixed)** 
+   - Fixed syntax errors in dnsmasq.conf
+   - Hard-coded IP addresses instead of using environment variables
+   - Changed dhcp-option format to use standard option codes (3 for router, 6 for DNS)
+
+2. **TFTP Service (In Progress)**
+   - Identified error code 71 indicating permissions issues
+   - Attempting to fix user/group permissions on /tftpboot directory
+   - Next step: Update supervisord.conf to run TFTP with appropriate user
+
+3. **Setup Script (In Progress)**
+   - Script fails when downloading Ubuntu netboot files (404 Not Found)
+   - Working on implementing better fallback mechanisms
+   - Next step: Update URLs and make download process more robust
 
 To continue development, run the container and use the following commands to investigate and fix issues:
 

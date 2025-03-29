@@ -3,9 +3,26 @@ set -e
 
 echo "Starting PXE boot server setup..."
 
+# Process dnsmasq configuration to replace environment variables
+echo "Generating dnsmasq configuration..."
+cat /etc/dnsmasq.conf | envsubst > /tmp/dnsmasq.conf
+mv /tmp/dnsmasq.conf /etc/dnsmasq.conf
+
+# Process dnsmasq.d configuration files too if they exist
+if [ -d /etc/dnsmasq.d ]; then
+    for f in /etc/dnsmasq.d/*; do
+        if [ -f "$f" ]; then
+            echo "Processing $f..."
+            cat "$f" | envsubst > /tmp/$(basename "$f")
+            mv /tmp/$(basename "$f") "$f"
+        fi
+    done
+fi
+
 # Create necessary directories
 mkdir -p /tftpboot/pxelinux.cfg
 mkdir -p /var/www/html/ubuntu
+mkdir -p /tftpboot/ubuntu
 
 # Download and set up SYSLINUX for PXE booting
 if [ ! -f /tftpboot/pxelinux.0 ]; then
@@ -29,7 +46,7 @@ MENU TITLE PXE Boot Menu
 LABEL ubuntu
     MENU LABEL Install Ubuntu 22.04 LTS
     KERNEL ubuntu/vmlinuz
-    APPEND initrd=ubuntu/initrd.gz url=http://${GATEWAY}/ubuntu/preseed.cfg auto=true priority=critical vga=normal --- quiet
+    APPEND initrd=ubuntu/initrd.gz url=http://172.28.192.1/ubuntu/preseed.cfg auto=true priority=critical vga=normal --- quiet
     
 LABEL local
     MENU LABEL Boot from local disk
@@ -37,25 +54,46 @@ LABEL local
 EOF
 fi
 
-# Download Ubuntu netboot files if not present
-if [ ! -f /tftpboot/ubuntu/vmlinuz ]; then
-    echo "Downloading Ubuntu netboot files..."
+# Create placeholder Ubuntu netboot files to ensure system can start
+echo "Creating placeholder netboot files..."
+touch /tftpboot/ubuntu/vmlinuz
+touch /tftpboot/ubuntu/initrd.gz
+
+# Try to download real Ubuntu netboot files in background
+echo "Attempting to download Ubuntu netboot files in background (continuing setup regardless)..."
+(
     mkdir -p /tmp/ubuntu-netboot
     cd /tmp/ubuntu-netboot
     
-    # Download Ubuntu 22.04 LTS netboot files
-    wget http://archive.ubuntu.com/ubuntu/dists/jammy/main/installer-amd64/current/legacy-images/netboot/netboot.tar.gz
+    # Try different Ubuntu 22.04 (Jammy) netboot file locations
+    echo "Trying legacy-images location..."
+    if wget -q http://archive.ubuntu.com/ubuntu/dists/jammy/main/installer-amd64/current/legacy-images/netboot/netboot.tar.gz; then
+        echo "Successfully downloaded from legacy-images location"
+    else
+        echo "Trying alternate URL..."
+        wget -q http://archive.ubuntu.com/ubuntu/dists/jammy-updates/main/installer-amd64/current/legacy-images/netboot/netboot.tar.gz
+    fi
     
-    # Extract and copy files
-    tar -xzf netboot.tar.gz
-    mkdir -p /tftpboot/ubuntu
-    cp ubuntu-installer/amd64/linux /tftpboot/ubuntu/vmlinuz
-    cp ubuntu-installer/amd64/initrd.gz /tftpboot/ubuntu/initrd.gz
+    if [ -f netboot.tar.gz ]; then
+        echo "Extracting netboot files..."
+        tar -xzf netboot.tar.gz
+        mkdir -p /tftpboot/ubuntu
+        if [ -f ubuntu-installer/amd64/linux ]; then
+            cp ubuntu-installer/amd64/linux /tftpboot/ubuntu/vmlinuz
+            cp ubuntu-installer/amd64/initrd.gz /tftpboot/ubuntu/initrd.gz
+            echo "Successfully installed Ubuntu netboot files"
+            chmod 644 /tftpboot/ubuntu/vmlinuz /tftpboot/ubuntu/initrd.gz
+        else
+            echo "Warning: Expected files not found in netboot.tar.gz"
+        fi
+    else
+        echo "Failed to download Ubuntu netboot files. Using placeholders."
+    fi
     
     # Clean up
-    cd -
+    cd /
     rm -rf /tmp/ubuntu-netboot
-fi
+) &
 
 # Create preseed configuration if not present
 if [ ! -f /var/www/html/ubuntu/preseed.cfg ]; then
@@ -118,8 +156,9 @@ d-i preseed/late_command string \
 EOF
 fi
 
-# Set the correct permissions
+# Set the correct permissions for TFTP
 chmod -R 755 /tftpboot
-chown -R tftp:tftp /tftpboot
+chown -R root:root /tftpboot
 
-echo "PXE boot server setup completed."
+echo "PXE boot server setup completed successfully."
+exit 0

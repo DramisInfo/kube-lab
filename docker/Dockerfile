@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     gnupg \
     ca-certificates \
+    gettext-base \
     --no-install-recommends
 
 # Install Node.js for the web UI
