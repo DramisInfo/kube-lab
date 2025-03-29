@@ -25,9 +25,11 @@ app.get('/status', (req, res) => {
   exec('pgrep dnsmasq', (error, stdout) => {
     status.dhcp = !error;
 
-    // Check TFTP server
-    exec('pgrep in.tftpd', (error, stdout) => {
-      status.tftp = !error;
+    // Check TFTP server - Now provided by dnsmasq
+    // Instead of checking for in.tftpd, we check if dnsmasq is configured with TFTP enabled
+    exec('grep "enable-tftp" /etc/dnsmasq.conf', (error, stdout) => {
+      // If dnsmasq is running and enable-tftp is in the config, then TFTP is active
+      status.tftp = !error && status.dhcp;
 
       // Check Nginx server
       exec('pgrep nginx', (error, stdout) => {
