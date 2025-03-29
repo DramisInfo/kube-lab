@@ -7,11 +7,6 @@ services:
       dockerfile: docker/Dockerfile
     container_name: pxe-boot-server
     network_mode: "host"  # Required for DHCP/PXE to work properly
-    volumes:
-      - ../config/dhcp:/etc/dnsmasq.d
-      - ../config/tftp:/tftpboot
-      - ../config/http:/var/www/html
-      - ../scripts:/app/scripts
     environment:
       - INTERFACE=eth0  # Change this to your network interface
       - SUBNET=192.168.1.0

@@ -32,13 +32,20 @@ RUN mkdir -p /etc/apt/keyrings && \
 # Create necessary directories
 RUN mkdir -p /tftpboot/pxelinux.cfg \
     && mkdir -p /var/www/html/ubuntu \
-    && mkdir -p /app/web-ui
+    && mkdir -p /app/web-ui \
+    && mkdir -p /etc/dnsmasq.d
 
 # Copy configuration files
 COPY config/dhcp/dnsmasq.conf /etc/dnsmasq.conf
+COPY config/dhcp/* /etc/dnsmasq.d/
 COPY config/tftp/tftpd-hpa /etc/default/tftpd-hpa
 COPY config/http/nginx.conf /etc/nginx/sites-available/default
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Copy TFTP boot files
+COPY config/tftp/*.c32 /tftpboot/
+COPY config/tftp/pxelinux.0 /tftpboot/
+COPY config/tftp/pxelinux.cfg/default /tftpboot/pxelinux.cfg/
 
 # Copy web UI files
 COPY web-ui /app/web-ui/
@@ -54,6 +61,12 @@ RUN chmod +x /app/scripts/*.sh
 
 # Create symbolic links from web UI files to Nginx web root
 RUN ln -sf /app/web-ui/public/* /var/www/html/
+
+# Fix permissions for NGINX and TFTP
+RUN chmod -R 755 /var/www/html/ && \
+    chmod -R 755 /tftpboot/ && \
+    chown -R www-data:www-data /var/www/html/ && \
+    chown -R nobody:nogroup /tftpboot/
 
 # Expose required ports
 EXPOSE 67/udp 69/udp 80 3000

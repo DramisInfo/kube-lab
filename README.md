@@ -64,16 +64,15 @@ This project aims to create a containerized grooming PC solution that can automa
 The following tasks still need to be completed to fully implement the PXE boot server:
 
 1. **Fix Web UI**
-   - The web UI currently returns a 403 Forbidden error
-   - ✅ Added symbolic link in Dockerfile, but needs troubleshooting
-   - Check that `/app/web-ui/public/*` files are actually being linked to `/var/www/html/`
-   - Verify Nginx configuration is properly set up to serve static files
-   - Ensure proper file permissions for web files
+   - ✅ Web UI is now accessible via HTTP (returns 200 OK)
+   - ✅ Added symbolic link in Dockerfile from `/app/web-ui/public/*` to `/var/www/html/`
+   - ✅ Verified Nginx configuration is properly serving static files
+   - ✅ File permissions are correctly set (755 for directories, ownership to www-data)
 
 2. **Set Up Node.js API Server**
-   - The web UI depends on API endpoints that need to be running
-   - Check that the Node.js server is properly starting in the container
-   - Verify API endpoints are accessible from the browser
+   - ✅ Node.js server is properly starting in the container and running
+   - ✅ The web-ui-api service shows as RUNNING in supervisord
+   - Need to verify API endpoints are accessible from the browser
    - Debug any connection issues between the web UI and API
 
 3. **Complete PXE Boot Configuration**
@@ -83,7 +82,8 @@ The following tasks still need to be completed to fully implement the PXE boot s
    - Test the complete PXE boot process with a client machine
 
 4. **Network Configuration Fine-tuning**
-   - Ensure DHCP server is properly configured for the network
+   - ❌ DHCP server (dnsmasq) is failing to start (enters FATAL state)
+   - Need to resolve conflicts with host network mode
    - Fix any IP address range or subnet mask issues
    - Verify that DHCP options for PXE boot are correctly set
 
