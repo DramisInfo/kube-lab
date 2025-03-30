@@ -1,5 +1,0 @@
-version: '3'
-services:
-  pxe-server:
-    volumes:
-      - ./temp/dhcp/dnsmasq.conf:/etc/dnsmasq.conf:ro
