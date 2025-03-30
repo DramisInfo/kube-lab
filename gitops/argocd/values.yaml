@@ -56,7 +56,17 @@ configs:
   secret:
     createSecret: true
   repositories:
-    # You'll add your Git repositories here later
+    # Private Git repository configuration
+    kube-lab:
+      url: https://github.com/DramisInfo/kube-lab.git
+      type: git
+      name: kube-lab
+      existingSecret: git-repo-credentials
+  credentialTemplates:
+    https-creds:
+      url: https://github.com
+      password: dummy-password
+      username: dummy-username
   params:
     # Configure server parameters to allow reconciliation
     server.insecure: true

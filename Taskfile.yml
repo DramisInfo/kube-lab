@@ -1,7 +1,16 @@
 version: '3'
 
+includes:
+  env:
+    taskfile: ""
+    optional: true
+    dotenv: ['.env']
+
 vars:
-  MANAGEMENT_CLUSTER_NAME: mgmt-cluster
+  MANAGEMENT_CLUSTER_NAME: '{{.MANAGEMENT_CLUSTER_NAME | default "mgmt-cluster"}}'
+  GITHUB_USERNAME: '{{.GITHUB_USERNAME}}'
+  GITHUB_TOKEN: '{{.GITHUB_TOKEN}}'
+  REPO_URL: '{{.REPO_URL | default "https://github.com/DramisInfo/kube-lab.git"}}'
 
 tasks:
   default:
@@ -74,3 +83,86 @@ tasks:
       - echo "Applying the root application manifest..."
       - kubectl apply -f gitops/root-app.yaml
       - echo "GitOps setup complete."
+
+  argocd:configure-repo:
+    desc: Configure a private Git repository for ArgoCD using credentials from .env file
+    cmds:
+      - |
+        if [ -z "{{.GITHUB_USERNAME}}" ] || [ -z "{{.GITHUB_TOKEN}}" ]; then
+          echo "Error: GITHUB_USERNAME or GITHUB_TOKEN not set."
+          echo "Please create a .env file based on .env.example and set your GitHub credentials."
+          exit 1
+        fi
+      - echo "Setting up credentials for private Git repository..."
+      - kubectl create secret generic git-repo-credentials --from-literal=username={{.GITHUB_USERNAME}} --from-literal=password={{.GITHUB_TOKEN}} -n argocd --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create secret generic git-creds --namespace argocd --from-literal=url={{.REPO_URL}} --from-literal=username={{.GITHUB_USERNAME}} --from-literal=password={{.GITHUB_TOKEN}} --dry-run=client -o yaml | kubectl apply -f -
+      - echo "Credentials created successfully. ArgoCD will use these to access {{.REPO_URL}}"
+
+  setup:all:
+    desc: Complete setup of management cluster with ArgoCD and GitOps configuration (idempotent)
+    cmds:
+      - echo "Starting complete setup process..."
+      
+      # Install prerequisites if needed
+      - task: prereq:install
+      
+      # Check if cluster exists before creating
+      - |
+        if ! k3d cluster list | grep -q "{{.MANAGEMENT_CLUSTER_NAME}}"; then
+          echo "Creating management cluster..."
+          task mgmt:create
+        else
+          echo "Management cluster already exists, skipping creation."
+        fi
+      
+      # Check if ArgoCD namespace exists
+      - |
+        if ! kubectl get namespace argocd &>/dev/null; then
+          echo "Creating ArgoCD namespace..."
+          kubectl create namespace argocd
+        else
+          echo "ArgoCD namespace already exists, skipping creation."
+        fi
+      
+      # Check if ArgoCD is already installed
+      - |
+        if ! helm list -n argocd | grep -q "argocd"; then
+          echo "Installing ArgoCD using Helm..."
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo update
+          helm install argocd argo/argo-cd --namespace argocd -f gitops/argocd/values.yaml
+          echo "Waiting for ArgoCD pods to be ready..."
+          kubectl wait --for=condition=available deployment/argocd-server --timeout=300s -n argocd
+        else
+          echo "ArgoCD already installed, skipping installation."
+        fi
+      
+      # Configure repository access if credentials are available
+      - |
+        if [ -n "{{.GITHUB_USERNAME}}" ] && [ -n "{{.GITHUB_TOKEN}}" ]; then
+          echo "Configuring repository access with credentials from .env file..."
+          task argocd:configure-repo
+        else
+          echo "WARNING: GitHub credentials not found in .env file."
+          echo "Create a .env file based on .env.example with your GitHub credentials to configure repository access."
+        fi
+      
+      # Display helpful information
+      - echo "ArgoCD is installed and ready."
+      - echo "Get the admin password with:"
+      - echo "  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+      - echo "Access the UI with:"
+      - echo "  kubectl port-forward svc/argocd-server -n argocd 8080:443"
+      
+      # Instructions for next steps
+      - echo ""
+      - echo "Next steps:"
+      - |
+        if [ -z "{{.GITHUB_USERNAME}}" ] || [ -z "{{.GITHUB_TOKEN}}" ]; then
+          echo "1. Create a .env file with your GitHub credentials (see .env.example)"
+          echo "2. Run 'task argocd:configure-repo' to set up repository access"
+        fi
+      - echo "Apply the ArgoCD applications by running:"
+      - echo "  task argocd:apply-apps"
+      - echo ""
+      - echo "Setup process completed."

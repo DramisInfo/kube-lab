@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/yourusername/kube-lab.git # Replace with your git repo URL
+    repoURL: https://github.com/DramisInfo/kube-lab.git # Replace with your git repo URL
     targetRevision: HEAD
     path: gitops
   destination:
