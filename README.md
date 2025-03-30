@@ -1,17 +1,27 @@
 # Kubernetes Management Cluster Lab
 
-A project for setting up and managing a Kubernetes management cluster using k3d that orchestrates other clusters via Cluster API (CAPI) and Open Cluster Management (OCM).
+A project for setting up and managing a Kubernetes management cluster using k3d that orchestrates other clusters via Cluster API (CAPI) and Open Cluster Management (OCM), following GitOps principles with ArgoCD.
 
 ## Overview
 
 This project provides tooling and configuration to:
 1. Set up a local management Kubernetes cluster using k3d
-2. Install and configure Cluster API (CAPI) for provisioning child clusters (future)
-3. Deploy Open Cluster Management (OCM) for centralized multi-cluster management (future)
-4. Create and manage clusters across multiple providers (future):
+2. Implement GitOps practices using ArgoCD for all deployments
+3. Install and configure Cluster API (CAPI) for provisioning child clusters (future)
+4. Deploy Open Cluster Management (OCM) for centralized multi-cluster management (future)
+5. Create and manage clusters across multiple providers (future):
    - Proxmox
    - Azure
    - AWS
+
+## Architecture
+
+This project follows GitOps principles:
+- The management cluster is created using k3d
+- ArgoCD will be used to deploy and manage all components within the cluster
+- All configuration will be stored in Git, representing the desired state
+- No direct kubectl commands will be used for deployments
+- Changes to the cluster will be made by updating the Git repository
 
 ## Prerequisites
 
@@ -76,18 +86,25 @@ The project includes the following tasks:
 
 ## Next Steps
 
-After setting up the management cluster, future versions of this project will include:
+After setting up the management cluster, the following steps will be implemented using GitOps with ArgoCD:
 
-1. Cluster API integration for different providers
-2. Open Cluster Management (OCM) setup
-3. Creating and managing workload clusters
+1. Deploy ArgoCD to the management cluster
+2. Configure ArgoCD to sync from this Git repository
+3. Deploy Cluster API components through ArgoCD
+4. Deploy Open Cluster Management (OCM) through ArgoCD
+5. Configure templates and workflows for creating workload clusters
 
 ## Project Structure
 
 ```
 kube-lab/
 ├── README.md
-└── Taskfile.yml          # Task definitions for common operations
+├── Taskfile.yml          # Task definitions for common operations
+└── gitops/               # GitOps manifests (to be added)
+    ├── argocd/           # ArgoCD installation and configuration
+    ├── cluster-api/      # Cluster API components
+    ├── ocm/              # Open Cluster Management components
+    └── clusters/         # Workload cluster definitions
 ```
 
 ## Contributing

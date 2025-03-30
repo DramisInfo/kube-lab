@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    targetRevision: '*'
+    chart: argo-cd
+    helm:
+      values: |
+        # This values section should match your values.yaml file
+        server:
+          extraArgs:
+            - --insecure
+          service:
+            type: ClusterIP
+          ingress:
+            enabled: false
+        
+        ha:
+          enabled: false
+        
+        notifications:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

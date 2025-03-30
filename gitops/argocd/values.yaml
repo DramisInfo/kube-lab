@@ -1,0 +1,83 @@
+# ArgoCD Helm values for management cluster
+server:
+  extraArgs:
+    - --insecure # Disable TLS to simplify local setup
+  service:
+    type: ClusterIP # Use ClusterIP for k3d (access via port-forward)
+  ingress:
+    enabled: false # We'll use kubectl port-forward for simple access
+
+controller:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+repoServer:
+  resources:
+    limits:
+      cpu: 300m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+applicationSet:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+redis:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+
+# Configure high availability (disable for local dev environment)
+ha:
+  enabled: false
+
+# Configure notifications (disabled by default)
+notifications:
+  enabled: false
+
+# Setup for GitOps management
+configs:
+  secret:
+    createSecret: true
+  repositories:
+    # You'll add your Git repositories here later
+  params:
+    # Configure server parameters to allow reconciliation
+    server.insecure: true
+    # Automatically refresh every 3 minutes
+    application.instanceLabelKey: argocd.argoproj.io/instance
+    controller.repo.server.timeout.seconds: "120"
+    server.repo.server.timeout.seconds: "120"
+
+# Specify which resource customizations to enable
+resource.customizations: |
+  argoproj.io/Application:
+    health.lua: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil then
+        if obj.status.health ~= nil then
+          hs.status = obj.status.health.status
+          if obj.status.health.message ~= nil then
+            hs.message = obj.status.health.message
+          end
+        end
+      end
+      return hs
