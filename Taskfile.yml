@@ -1,0 +1,52 @@
+version: '3'
+
+vars:
+  MANAGEMENT_CLUSTER_NAME: mgmt-cluster
+
+tasks:
+  default:
+    cmds:
+      - task -l
+    desc: Display list of available tasks
+
+  prereq:install:
+    desc: Install all prerequisites
+    cmds:
+      - task: prereq:install-k3d
+      - task: prereq:install-kubectl
+      - task: prereq:install-helm
+    summary: Install all required tools and dependencies
+
+  prereq:install-k3d:
+    desc: Install k3d
+    cmds:
+      - echo "Installing k3d..."
+      - wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+  prereq:install-kubectl:
+    desc: Install kubectl
+    cmds:
+      - echo "Installing kubectl..."
+      - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      - chmod +x kubectl
+      - sudo mv kubectl /usr/local/bin/
+
+  prereq:install-helm:
+    desc: Install Helm
+    cmds:
+      - echo "Installing Helm..."
+      - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+  mgmt:create:
+    desc: Create management cluster with k3d
+    cmds:
+      - echo "Creating k3d management cluster..."
+      - k3d cluster create {{.MANAGEMENT_CLUSTER_NAME}} --servers 1 --agents 2 --port 6443:6443 --k3s-arg "--disable=traefik@server:0"
+      - echo "Management cluster created and configured"
+      - kubectl get nodes
+
+  mgmt:delete:
+    desc: Delete management cluster
+    cmds:
+      - echo "Deleting k3d management cluster..."
+      - k3d cluster delete {{.MANAGEMENT_CLUSTER_NAME}}
