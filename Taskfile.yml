@@ -1,16 +1,14 @@
 version: '3'
 
-includes:
-  env:
-    taskfile: ""
-    optional: true
-    dotenv: ['.env']
+# Load environment variables from .env file
+dotenv: ['.env']
 
 vars:
   MANAGEMENT_CLUSTER_NAME: '{{.MANAGEMENT_CLUSTER_NAME | default "mgmt-cluster"}}'
   GITHUB_USERNAME: '{{.GITHUB_USERNAME}}'
   GITHUB_TOKEN: '{{.GITHUB_TOKEN}}'
   REPO_URL: '{{.REPO_URL | default "https://github.com/DramisInfo/kube-lab.git"}}'
+  REPO_IS_PUBLIC: '{{.REPO_IS_PUBLIC | default "false"}}'
 
 tasks:
   default:
@@ -91,12 +89,30 @@ tasks:
         if [ -z "{{.GITHUB_USERNAME}}" ] || [ -z "{{.GITHUB_TOKEN}}" ]; then
           echo "Error: GITHUB_USERNAME or GITHUB_TOKEN not set."
           echo "Please create a .env file based on .env.example and set your GitHub credentials."
+          echo "If you're using a public repository, use the argocd:configure-public-repo task instead."
           exit 1
         fi
       - echo "Setting up credentials for private Git repository..."
       - kubectl create secret generic git-repo-credentials --from-literal=username={{.GITHUB_USERNAME}} --from-literal=password={{.GITHUB_TOKEN}} -n argocd --dry-run=client -o yaml | kubectl apply -f -
       - kubectl create secret generic git-creds --namespace argocd --from-literal=url={{.REPO_URL}} --from-literal=username={{.GITHUB_USERNAME}} --from-literal=password={{.GITHUB_TOKEN}} --dry-run=client -o yaml | kubectl apply -f -
       - echo "Credentials created successfully. ArgoCD will use these to access {{.REPO_URL}}"
+
+  argocd:configure-public-repo:
+    desc: Configure ArgoCD to use a public Git repository without credentials
+    cmds:
+      - echo "Configuring ArgoCD to use public Git repository {{.REPO_URL}}..."
+      - |
+        # Remove any existing credentials that might be applied previously
+        if kubectl get secret git-repo-credentials -n argocd &>/dev/null; then
+          echo "Removing existing git-repo-credentials secret..."
+          kubectl delete secret git-repo-credentials -n argocd
+        fi
+        if kubectl get secret git-creds -n argocd &>/dev/null; then
+          echo "Removing existing git-creds secret..."
+          kubectl delete secret git-creds -n argocd
+        fi
+      - echo "ArgoCD is now configured to access the public repository {{.REPO_URL}}"
+      - echo "Make sure your repository is actually set to public in GitHub settings"
 
   setup:all:
     desc: Complete setup of management cluster with ArgoCD and GitOps configuration (idempotent)
@@ -137,14 +153,18 @@ tasks:
           echo "ArgoCD already installed, skipping installation."
         fi
       
-      # Configure repository access if credentials are available
+      # Configure repository access based on whether it's public or private
       - |
-        if [ -n "{{.GITHUB_USERNAME}}" ] && [ -n "{{.GITHUB_TOKEN}}" ]; then
-          echo "Configuring repository access with credentials from .env file..."
+        if [ "{{.REPO_IS_PUBLIC}}" = "true" ]; then
+          echo "Configuring access for public repository..."
+          task argocd:configure-public-repo
+        elif [ -n "{{.GITHUB_USERNAME}}" ] && [ -n "{{.GITHUB_TOKEN}}" ]; then
+          echo "Configuring access for private repository with credentials from .env file..."
           task argocd:configure-repo
         else
-          echo "WARNING: GitHub credentials not found in .env file."
-          echo "Create a .env file based on .env.example with your GitHub credentials to configure repository access."
+          echo "WARNING: Using public repository access by default."
+          echo "If your repository is private, create a .env file with GitHub credentials."
+          task argocd:configure-public-repo
         fi
       
       # Display helpful information
@@ -157,11 +177,6 @@ tasks:
       # Instructions for next steps
       - echo ""
       - echo "Next steps:"
-      - |
-        if [ -z "{{.GITHUB_USERNAME}}" ] || [ -z "{{.GITHUB_TOKEN}}" ]; then
-          echo "1. Create a .env file with your GitHub credentials (see .env.example)"
-          echo "2. Run 'task argocd:configure-repo' to set up repository access"
-        fi
       - echo "Apply the ArgoCD applications by running:"
       - echo "  task argocd:apply-apps"
       - echo ""
